@@ -3,205 +3,919 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>WhatsApp Clone</title>
+    <title>WhatsApp Web - Pro Edition</title>
+    <!-- Carga de Socket.IO -->
     <script src="/socket.io/socket.io.js"></script>
+    <!-- Iconos FontAwesome -->
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
     <style>
+        /* ==========================================================================
+           RESET & ESTILOS BASE (ESTILO WHATSAPP WEB OFFICIAL)
+           ========================================================================== */
         * {
             box-sizing: border-box;
             margin: 0;
             padding: 0;
-            font-family: Arial, sans-serif;
+            font-family: -apple-system, BlinkMacSystemFont, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
         }
 
         body {
-            background-color: #d1d7db;
+            background-color: #111b21;
+            height: 100vh;
             display: flex;
             justify-content: center;
             align-items: center;
-            height: 100vh;
-        }
-
-        #chat-container {
-            width: 100%;
-            max-width: 500px;
-            height: 90vh;
-            background-color: #efeae2;
-            display: flex;
-            flex-direction: column;
-            border-radius: 8px;
-            box-shadow: 0 2px 10px rgba(0, 0, 0, 0.2);
             overflow: hidden;
+            color: #e9edef;
         }
 
-        #login-screen {
-            padding: 20px;
+        /* Contenedor Principal Completo */
+        #app-container {
+            width: 100vw;
+            height: 100vh;
+            display: flex;
+            background-color: #111b21;
+            position: relative;
+            box-shadow: 0 6px 18px rgba(0, 0, 0, 0.5);
+        }
+
+        /* ==========================================================================
+           PANTALLA DE INICIO DE SESIÓN / REGISTRO
+           ========================================================================== */
+        #auth-screen {
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: #111b21;
+            z-index: 999;
             display: flex;
             flex-direction: column;
-            gap: 10px;
             justify-content: center;
-            height: 100%;
-            background-color: #ffffff;
+            align-items: center;
         }
 
-        #login-screen h2 {
+        .auth-card {
+            background-color: #202c33;
+            padding: 40px;
+            border-radius: 12px;
+            width: 90%;
+            max-width: 420px;
             text-align: center;
-            color: #075e54;
+            box-shadow: 0 4px 20px rgba(0,0,0,0.4);
+        }
+
+        .auth-card i.main-icon {
+            font-size: 64px;
+            color: #00a884;
+            margin-bottom: 20px;
+        }
+
+        .auth-card h2 {
+            font-size: 24px;
             margin-bottom: 10px;
+            color: #e9edef;
         }
 
-        input[type="text"] {
-            padding: 12px;
-            border: 1px solid #ccc;
-            border-radius: 6px;
-            outline: none;
-            font-size: 16px;
+        .auth-card p {
+            font-size: 14px;
+            color: #8696a0;
+            margin-bottom: 25px;
+            line-height: 1.4;
         }
 
-        button {
-            padding: 12px;
-            background-color: #25d366;
-            color: white;
-            border: none;
-            border-radius: 6px;
-            font-size: 16px;
+        .auth-input-group {
+            margin-bottom: 20px;
+            text-align: left;
+        }
+
+        .auth-input-group label {
+            display: block;
+            font-size: 12px;
+            color: #00a884;
+            margin-bottom: 5px;
+            text-transform: uppercase;
             font-weight: bold;
+        }
+
+        .auth-input-group input {
+            width: 100%;
+            padding: 12px 15px;
+            border-radius: 8px;
+            border: 1px solid #2a3942;
+            background-color: #111b21;
+            color: #e9edef;
+            font-size: 15px;
+            outline: none;
+            transition: border-color 0.2s;
+        }
+
+        .auth-input-group input:focus {
+            border-color: #00a884;
+        }
+
+        .btn-primary {
+            width: 100%;
+            padding: 12px;
+            background-color: #00a884;
+            color: #111b21;
+            border: none;
+            border-radius: 8px;
+            font-size: 15px;
+            font-weight: bold;
+            cursor: pointer;
+            transition: background-color 0.2s;
+        }
+
+        .btn-primary:hover {
+            background-color: #008f6f;
+        }
+
+        /* ==========================================================================
+           PANEL LATERAL IZQUIERDO (SIDEBAR: CHATS, PERFIL, BÚSQUEDA)
+           ========================================================================== */
+        #sidebar {
+            width: 30%;
+            min-width: 320px;
+            max-width: 450px;
+            background-color: #111b21;
+            border-right: 1px solid #222d34;
+            display: flex;
+            flex-direction: column;
+            height: 100%;
+        }
+
+        .sidebar-header {
+            height: 60px;
+            background-color: #202c33;
+            padding: 10px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .user-avatar {
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            background-color: #6b7c85;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-weight: bold;
+            color: #fff;
             cursor: pointer;
         }
 
-        button:hover {
-            background-color: #128c7e;
+        .header-icons {
+            display: flex;
+            gap: 20px;
+            color: #aebac1;
+            font-size: 18px;
         }
 
-        #main-chat {
-            display: none;
-            flex-direction: column;
-            height: 100%;
+        .header-icons i {
+            cursor: pointer;
+            transition: color 0.2s;
         }
 
-        #header {
-            background-color: #075e54;
-            color: white;
-            padding: 15px;
-            font-weight: bold;
+        .header-icons i:hover {
+            color: #e9edef;
         }
 
-        #messages {
+        .search-container {
+            padding: 8px 12px;
+            background-color: #111b21;
+            border-bottom: 1px solid #222d34;
+        }
+
+        .search-box {
+            background-color: #202c33;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            padding: 0 12px;
+            height: 35px;
+        }
+
+        .search-box i {
+            color: #8696a0;
+            font-size: 14px;
+            margin-right: 12px;
+        }
+
+        .search-box input {
+            background: transparent;
+            border: none;
+            color: #e9edef;
+            width: 100%;
+            outline: none;
+            font-size: 14px;
+        }
+
+        .chat-list {
             flex: 1;
-            padding: 15px;
+            overflow-y: auto;
+        }
+
+        .chat-item {
+            display: flex;
+            padding: 12px 16px;
+            align-items: center;
+            cursor: pointer;
+            border-bottom: 1px solid #222d34;
+            transition: background-color 0.2s;
+        }
+
+        .chat-item:hover, .chat-item.active {
+            background-color: #2a3942;
+        }
+
+        .chat-item-avatar {
+            width: 49px;
+            height: 49px;
+            border-radius: 50%;
+            background-color: #00a884;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            font-size: 20px;
+            color: #fff;
+            margin-right: 15px;
+        }
+
+        .chat-item-details {
+            flex: 1;
+            overflow: hidden;
+        }
+
+        .chat-item-top {
+            display: flex;
+            justify-content: space-between;
+            margin-bottom: 4px;
+        }
+
+        .chat-item-name {
+            font-size: 16px;
+            color: #e9edef;
+            font-weight: 500;
+        }
+
+        .chat-item-time {
+            font-size: 12px;
+            color: #8696a0;
+        }
+
+        .chat-item-bottom {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .chat-item-lastmsg {
+            font-size: 13px;
+            color: #8696a0;
+            white-space: nowrap;
+            overflow: hidden;
+            text-overflow: ellipsis;
+            max-width: 200px;
+        }
+
+        .unread-badge {
+            background-color: #25d366;
+            color: #111b21;
+            font-size: 12px;
+            font-weight: bold;
+            border-radius: 50%;
+            width: 20px;
+            height: 20px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+        }
+
+        /* ==========================================================================
+           ÁREA PRINCIPAL DE CHAT
+           ========================================================================== */
+        #main-chat-area {
+            flex: 1;
+            display: flex;
+            flex-direction: column;
+            background-color: #0b141a;
+            position: relative;
+        }
+
+        /* Fondo oficial de textura de WhatsApp (recreado sintéticamente) */
+        #main-chat-area::before {
+            content: "";
+            position: absolute;
+            top: 0; left: 0; right: 0; bottom: 0;
+            background-image: radial-gradient(#1f2c34 1px, transparent 1px);
+            background-size: 20px 20px;
+            opacity: 0.15;
+            pointer-events: none;
+        }
+
+        .chat-header {
+            height: 60px;
+            background-color: #202c33;
+            padding: 10px 16px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            z-index: 10;
+            border-left: 1px solid #222d34;
+        }
+
+        .chat-header-info {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            cursor: pointer;
+        }
+
+        .chat-header-title h3 {
+            font-size: 16px;
+            color: #e9edef;
+            font-weight: 500;
+        }
+
+        .chat-header-title p {
+            font-size: 12px;
+            color: #8696a0;
+            height: 15px;
+        }
+
+        /* Ventana de Mensajes */
+        #messages-container {
+            flex: 1;
+            padding: 20px 5%;
             overflow-y: auto;
             display: flex;
             flex-direction: column;
-            gap: 10px;
+            gap: 8px;
+            z-index: 5;
         }
 
-        /* ESTILOS DE LOS MENSAJES */
-        .mensaje {
-            padding: 8px 12px;
+        /* ==========================================================================
+           BURBUJAS DE MENSAJES Y REGLAS DE TEXTO LARGO (CORRECCIÓN CLAVE)
+           ========================================================================== */
+        .message-bubble {
+            padding: 6px 10px 8px 10px;
             border-radius: 8px;
-            font-size: 14px;
-            line-height: 1.4;
+            font-size: 14.2px;
+            line-height: 19px;
+            position: relative;
             
-            /* Ajustes para textos largos tipo WhatsApp */
-            max-width: 75%;
+            /* --- REGLAS CRÍTICAS PARA MENSAJES LARGOS TIPO WHATSAPP --- */
+            max-width: 65%;
+            width: fit-content;
             word-break: break-word;
-            overflow-wrap: break-word;
+            overflow-wrap: anywhere;
             white-space: pre-wrap;
+            box-shadow: 0 1px 0.5px rgba(11, 20, 26, 0.13);
         }
 
-        .mensaje.enviado {
-            background-color: #d9fdd3;
+        .message-bubble.sent {
+            background-color: #005c4b;
+            color: #e9edef;
             align-self: flex-end;
-            border-bottom-right-radius: 2px;
+            border-top-right-radius: 0;
         }
 
-        .mensaje.recibido {
-            background-color: #ffffff;
+        .message-bubble.received {
+            background-color: #202c33;
+            color: #e9edef;
             align-self: flex-start;
-            border-bottom-left-radius: 2px;
+            border-top-left-radius: 0;
         }
 
-        .mensaje .remitente {
-            font-size: 11px;
-            font-weight: bold;
-            color: #128c7e;
+        .message-sender {
+            font-size: 12.8px;
+            font-weight: 500;
+            color: #e52d27; /* Se asigna dinámicamente */
             margin-bottom: 2px;
             display: block;
         }
 
-        #input-area {
-            display: flex;
-            padding: 10px;
-            background-color: #f0f2f5;
-            gap: 10px;
+        .message-meta {
+            float: right;
+            margin-left: 10px;
+            margin-top: 4px;
+            display: inline-flex;
+            align-items: center;
+            gap: 3px;
         }
 
-        #input-area input {
+        .message-time {
+            font-size: 11px;
+            color: #8696a0;
+        }
+
+        .message-bubble.sent .message-time {
+            color: #25d366;
+        }
+
+        .status-ticks {
+            font-size: 12px;
+            color: #53bdeb; /* Doble check azul */
+        }
+
+        .system-notification {
+            align-self: center;
+            background-color: #182229;
+            color: #8696a0;
+            font-size: 12.5px;
+            padding: 5px 12px;
+            border-radius: 8px;
+            margin: 8px 0;
+            box-shadow: 0 1px 2px rgba(0,0,0,0.2);
+            text-align: center;
+        }
+
+        /* ==========================================================================
+           BARRA DE ENTRADA / COMPOSICIÓN DE MENSAJES
+           ========================================================================== */
+        .chat-input-bar {
+            min-height: 62px;
+            background-color: #202c33;
+            padding: 5px 16px;
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            z-index: 10;
+        }
+
+        .input-icons {
+            color: #8696a0;
+            font-size: 20px;
+            display: flex;
+            gap: 15px;
+        }
+
+        .input-icons i {
+            cursor: pointer;
+            transition: color 0.2s;
+        }
+
+        .input-icons i:hover {
+            color: #e9edef;
+        }
+
+        .input-field-wrapper {
             flex: 1;
+            background-color: #2a3942;
+            border-radius: 8px;
+            display: flex;
+            align-items: center;
+            padding: 9px 12px;
+        }
+
+        .input-field-wrapper textarea {
+            width: 100%;
+            background: transparent;
+            border: none;
+            color: #e9edef;
+            outline: none;
+            font-size: 15px;
+            resize: none;
+            max-height: 100px;
+            height: 22px;
+            line-height: 22px;
+        }
+
+        .send-button {
+            background-color: #00a884;
+            color: #111b21;
+            width: 40px;
+            height: 40px;
+            border-radius: 50%;
+            border: none;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            cursor: pointer;
+            font-size: 16px;
+            transition: transform 0.1s;
+        }
+
+        .send-button:active {
+            transform: scale(0.95);
+        }
+
+        /* Panel de Emojis */
+        #emoji-panel {
+            position: absolute;
+            bottom: 70px;
+            left: 20px;
+            background-color: #202c33;
+            border-radius: 8px;
+            padding: 10px;
+            display: none;
+            grid-template-columns: repeat(6, 1fr);
+            gap: 10px;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.5);
+            z-index: 20;
+        }
+
+        #emoji-panel span {
+            font-size: 22px;
+            cursor: pointer;
+            text-align: center;
+            transition: transform 0.1s;
+        }
+
+        #emoji-panel span:hover {
+            transform: scale(1.3);
+        }
+
+        /* Personalización del Scrollbar */
+        ::-webkit-scrollbar {
+            width: 6px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background-color: #374248;
+        }
+        ::-webkit-scrollbar-track {
+            background: transparent;
         }
     </style>
 </head>
 <body>
 
-    <div id="chat-container">
-        <!-- Pantalla de Inicio / Registro de Usuario -->
-        <div id="login-screen">
-            <h2>WhatsApp Clone</h2>
-            <input type="text" id="username" placeholder="Ingresa tu teléfono o nombre...">
-            <button onclick="iniciarSesion()">Ingresar</button>
-        </div>
+    <div id="app-container">
 
-        <!-- Pantalla Principal del Chat -->
-        <div id="main-chat">
-            <div id="header">Chat Global</div>
-            <div id="messages"></div>
-            <div id="input-area">
-                <input type="text" id="message-input" placeholder="Escribe un mensaje..." onkeypress="if(event.key === 'Enter') enviarMensaje()">
-                <button onclick="enviarMensaje()">Enviar</button>
+        <!-- PANTALLA DE AUTENTICACIÓN -->
+        <div id="auth-screen">
+            <div class="auth-card">
+                <i class="fa-brands fa-whatsapp main-icon"></i>
+                <h2>WhatsApp Web</h2>
+                <p>Ingresa tu nombre o número para conectarte al chat global en tiempo real.</p>
+                <form id="auth-form" onsubmit="event.preventDefault(); AppManager.login();">
+                    <div class="auth-input-group">
+                        <label for="username-input">Tu Identificación</label>
+                        <input type="text" id="username-input" placeholder="Ej: +57 300 123 4567 o Juan" required autocomplete="off">
+                    </div>
+                    <button type="submit" class="btn-primary">CONECTARSE</button>
+                </form>
             </div>
         </div>
+
+        <!-- PANEL LATERAL DE CHATS -->
+        <div id="sidebar">
+            <div class="sidebar-header">
+                <div class="user-avatar" id="my-avatar" title="Tu Perfil">U</div>
+                <div class="header-icons">
+                    <i class="fa-solid fa-users" title="Comunidades"></i>
+                    <i class="fa-solid fa-circle-notch" title="Estados"></i>
+                    <i class="fa-solid fa-message" title="Nuevo chat"></i>
+                    <i class="fa-solid fa-ellipsis-vertical" title="Menú"></i>
+                </div>
+            </div>
+
+            <div class="search-container">
+                <div class="search-box">
+                    <i class="fa-solid fa-magnifying-glass"></i>
+                    <input type="text" id="search-chat" placeholder="Buscar o empezar un nuevo chat" onkeyup="AppManager.filterChats()">
+                </div>
+            </div>
+
+            <div class="chat-list" id="chat-list">
+                <!-- Chat Global por Defecto -->
+                <div class="chat-item active" data-chat="global">
+                    <div class="chat-item-avatar">
+                        <i class="fa-solid fa-earth-americas"></i>
+                    </div>
+                    <div class="chat-item-details">
+                        <div class="chat-item-top">
+                            <span class="chat-item-name">Chat Global WhatsApp</span>
+                            <span class="chat-item-time" id="global-last-time">--:--</span>
+                        </div>
+                        <div class="chat-item-bottom">
+                            <span class="chat-item-lastmsg" id="global-last-msg">Haz clic para comenzar a hablar...</span>
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+
+        <!-- ÁREA DE CONVERSACIÓN PRINCIPAL -->
+        <div id="main-chat-area">
+            
+            <!-- Encabezado del Chat -->
+            <div class="chat-header">
+                <div class="chat-header-info">
+                    <div class="user-avatar" style="background-color: #00a884;">
+                        <i class="fa-solid fa-earth-americas"></i>
+                    </div>
+                    <div class="chat-header-title">
+                        <h3>Chat Global WhatsApp</h3>
+                        <p id="chat-substatus">en línea</p>
+                    </div>
+                </div>
+                <div class="header-icons">
+                    <i class="fa-solid fa-video" title="Videollamada"></i>
+                    <i class="fa-solid fa-phone" title="Llamada"></i>
+                    <i class="fa-solid fa-magnifying-glass" title="Buscar en chat"></i>
+                    <i class="fa-solid fa-ellipsis-vertical" title="Más opciones"></i>
+                </div>
+            </div>
+
+            <!-- Contenedor de Mensajes -->
+            <div id="messages-container">
+                <div class="system-notification">
+                    <i class="fa-solid fa-lock"></i> Los mensajes están cifrados de extremo a extremo simulados en Node.js.
+                </div>
+            </div>
+
+            <!-- Selector de Emojis -->
+            <div id="emoji-panel">
+                <span onclick="AppManager.addEmoji('😀')">😀</span>
+                <span onclick="AppManager.addEmoji('😂')">😂</span>
+                <span onclick="AppManager.addEmoji('😍')">😍</span>
+                <span onclick="AppManager.addEmoji('👍')">👍</span>
+                <span onclick="AppManager.addEmoji('🔥')">🔥</span>
+                <span onclick="AppManager.addEmoji('🎉')">🎉</span>
+                <span onclick="AppManager.addEmoji('❤️')">❤️</span>
+                <span onclick="AppManager.addEmoji('🙏')">🙏</span>
+                <span onclick="AppManager.addEmoji('😎')">😎</span>
+                <span onclick="AppManager.addEmoji('😭')">😭</span>
+                <span onclick="AppManager.addEmoji('🤔')">🤔</span>
+                <span onclick="AppManager.addEmoji('✅')">✅</span>
+            </div>
+
+            <!-- Barra de Escritura -->
+            <div class="chat-input-bar">
+                <div class="input-icons">
+                    <i class="fa-regular fa-face-smile" onclick="AppManager.toggleEmojiPanel()" title="Emojis"></i>
+                    <i class="fa-solid fa-paperclip" title="Adjuntar"></i>
+                </div>
+                <div class="input-field-wrapper">
+                    <textarea id="message-input" placeholder="Escribe un mensaje" rows="1" 
+                              onkeydown="AppManager.handleKeyPress(event)" 
+                              oninput="AppManager.handleTyping()"></textarea>
+                </div>
+                <button class="send-button" onclick="AppManager.sendMessage()" title="Enviar mensaje">
+                    <i class="fa-solid fa-paper-plane"></i>
+                </button>
+            </div>
+
+        </div>
+
     </div>
 
+    <!-- ==========================================================================
+       LÓGICA JAVASCRIPT PROFESIONAL DE LA APLICACIÓN
+       ========================================================================== -->
     <script>
-        const socket = io();
-        let usuarioActual = "";
+        /**
+         * Manager Principal de la Aplicación (Arquitectura Modular)
+         */
+        const AppManager = (() => {
+            // Estado Privado
+            let socket = null;
+            let currentUser = "";
+            let userColors = {};
+            let typingTimeout = null;
+            let isTyping = false;
 
-        function iniciarSesion() {
-            const input = document.getElementById("username");
-            if (input.value.trim() !== "") {
-                usuarioActual = input.value.trim();
-                document.getElementById("login-screen").style.display = "none";
-                document.getElementById("main-chat").style.display = "flex";
-            }
-        }
+            // Paleta de colores para los nombres de usuario
+            const avatarColors = [
+                "#e52d27", "#00a884", "#3b5998", "#8e44ad", 
+                "#f39c12", "#d35400", "#16a085", "#2c3e50"
+            ];
 
-        function enviarMensaje() {
-            const input = document.getElementById("message-input");
-            const texto = input.value.trim();
-            if (texto !== "") {
-                const mensajeData = {
-                    usuario: usuarioActual,
-                    texto: texto
-                };
-                socket.emit("chat message", mensajeData);
-                input.value = "";
-            }
-        }
+            /**
+             * Inicializa la conexión mediante WebSockets
+             */
+            const initSocket = () => {
+                socket = io();
 
-        socket.on("chat message", (data) => {
-            const contenedor = document.getElementById("messages");
-            const div = document.createElement("div");
-            
-            div.classList.add("mensaje");
-            if (data.usuario === usuarioActual) {
-                div.classList.add("enviado");
-                div.innerHTML = data.texto;
-            } else {
-                div.classList.add("recibido");
-                div.innerHTML = `<span class="remitente">${data.usuario}</span>${data.texto}`;
-            }
+                // Recibir mensaje del servidor
+                socket.on("chat message", (data) => {
+                    renderMessage(data);
+                    updateLastMessageUI(data);
+                });
 
-            contenedor.appendChild(div);
-            contenedor.scrollTop = contenedor.scrollHeight;
+                // Notificaciones de sistema (Entradas / Salidas)
+                socket.on("system message", (msg) => {
+                    renderSystemNotification(msg);
+                });
+
+                // Evento de "Escribiendo..."
+                socket.on("user typing", (data) => {
+                    const substatus = document.getElementById("chat-substatus");
+                    if (data.user !== currentUser) {
+                        substatus.innerText = `${data.user} está escribiendo...`;
+                        substatus.style.color = "#00a884";
+                        
+                        clearTimeout(typingTimeout);
+                        typingTimeout = setTimeout(() => {
+                            substatus.innerText = "en línea";
+                            substatus.style.color = "#8696a0";
+                        }, 2000);
+                    }
+                });
+            };
+
+            /**
+             * Asigna un color consistente a cada usuario
+             */
+            const getUserColor = (username) => {
+                if (userColors[username]) return userColors[username];
+                let hash = 0;
+                for (let i = 0; i < username.length; i++) {
+                    hash = username.charCodeAt(i) + ((hash << 5) - hash);
+                }
+                const index = Math.abs(hash) % avatarColors.length;
+                userColors[username] = avatarColors[index];
+                return userColors[username];
+            };
+
+            /**
+             * Formatea la hora actual al formato HH:MM
+             */
+            const getCurrentTime = () => {
+                const now = new Date();
+                let hours = now.getHours();
+                let minutes = now.getMinutes();
+                hours = hours < 10 ? '0' + hours : hours;
+                minutes = minutes < 10 ? '0' + minutes : minutes;
+                return `${hours}:${minutes}`;
+            };
+
+            /**
+             * Renderiza un mensaje en el DOM con soporte de auto-ajuste de texto
+             */
+            const renderMessage = (data) => {
+                const container = document.getElementById("messages-container");
+                const bubble = document.createElement("div");
+                const isSent = data.usuario === currentUser;
+
+                bubble.classList.add("message-bubble");
+                bubble.classList.add(isSent ? "sent" : "received");
+
+                const time = data.hora || getCurrentTime();
+                const userColor = getUserColor(data.usuario);
+
+                // Construcción del HTML Interno
+                let headerHTML = "";
+                if (!isSent) {
+                    headerHTML = `<span class="message-sender" style="color: ${userColor}">${data.usuario}</span>`;
+                }
+
+                const ticksHTML = isSent ? `<i class="fa-solid fa-check-double status-ticks"></i>` : "";
+
+                bubble.innerHTML = `
+                    ${headerHTML}
+                    <span class="message-text"></span>
+                    <span class="message-meta">
+                        <span class="message-time">${time}</span>
+                        ${ticksHTML}
+                    </span>
+                `;
+
+                // Inserción segura de texto para evitar inyecciones XSS
+                bubble.querySelector(".message-text").innerText = data.texto;
+
+                container.appendChild(bubble);
+                scrollToBottom();
+            };
+
+            /**
+             * Renderiza notificaciones del sistema
+             */
+            const renderSystemNotification = (text) => {
+                const container = document.getElementById("messages-container");
+                const div = document.createElement("div");
+                div.classList.add("system-notification");
+                div.innerText = text;
+                container.appendChild(div);
+                scrollToBottom();
+            };
+
+            /**
+             * Auto-scroll hacia abajo
+             */
+            const scrollToBottom = () => {
+                const container = document.getElementById("messages-container");
+                container.scrollTop = container.scrollHeight;
+            };
+
+            /**
+             * Actualiza el panel lateral con el último mensaje enviado
+             */
+            const updateLastMessageUI = (data) => {
+                const lastMsgElement = document.getElementById("global-last-msg");
+                const lastTimeElement = document.getElementById("global-last-time");
+                
+                if (lastMsgElement) {
+                    const prefix = data.usuario === currentUser ? "Tú: " : `${data.usuario}: `;
+                    lastMsgElement.innerText = prefix + data.texto;
+                }
+                if (lastTimeElement) {
+                    lastTimeElement.innerText = data.hora || getCurrentTime();
+                }
+            };
+
+            // Métodos Públicos
+            return {
+                init: () => {
+                    // Verificar si ya hay un usuario guardado
+                    const savedUser = localStorage.getItem("wa_username");
+                    if (savedUser) {
+                        document.getElementById("username-input").value = savedUser;
+                    }
+                },
+
+                login: () => {
+                    const input = document.getElementById("username-input");
+                    const val = input.value.trim();
+
+                    if (val !== "") {
+                        currentUser = val;
+                        localStorage.setItem("wa_username", currentUser);
+
+                        // Actualizar Avatar
+                        const avatar = document.getElementById("my-avatar");
+                        avatar.innerText = currentUser.charAt(0).toUpperCase();
+                        avatar.style.backgroundColor = getUserColor(currentUser);
+
+                        // Ocultar Auth
+                        document.getElementById("auth-screen").style.display = "none";
+
+                        // Inicializar WebSockets
+                        initSocket();
+
+                        // Emitir conexión al servidor
+                        socket.emit("system message", `${currentUser} se ha unido al chat.`);
+                    }
+                },
+
+                sendMessage: () => {
+                    const input = document.getElementById("message-input");
+                    const text = input.value.trim();
+
+                    if (text !== "" && socket) {
+                        const payload = {
+                            usuario: currentUser,
+                            texto: text,
+                            hora: getCurrentTime()
+                        };
+
+                        socket.emit("chat message", payload);
+                        input.value = "";
+                        input.style.height = "22px";
+                        document.getElementById("emoji-panel").style.display = "none";
+                    }
+                },
+
+                handleKeyPress: (event) => {
+                    if (event.key === "Enter" && !event.shiftKey) {
+                        event.preventDefault();
+                        AppManager.sendMessage();
+                    }
+                },
+
+                handleTyping: () => {
+                    const textarea = document.getElementById("message-input");
+                    textarea.style.height = "auto";
+                    textarea.style.height = Math.min(textarea.scrollHeight, 100) + "px";
+
+                    if (socket && !isTyping) {
+                        isTyping = true;
+                        socket.emit("user typing", { user: currentUser });
+                        setTimeout(() => { isTyping = false; }, 2000);
+                    }
+                },
+
+                toggleEmojiPanel: () => {
+                    const panel = document.getElementById("emoji-panel");
+                    panel.style.display = panel.style.display === "grid" ? "none" : "grid";
+                },
+
+                addEmoji: (emoji) => {
+                    const input = document.getElementById("message-input");
+                    input.value += emoji;
+                    input.focus();
+                },
+
+                filterChats: () => {
+                    const query = document.getElementById("search-chat").value.toLowerCase();
+                    const items = document.querySelectorAll(".chat-item");
+                    
+                    items.forEach(item => {
+                        const name = item.querySelector(".chat-item-name").innerText.toLowerCase();
+                        item.style.display = name.includes(query) ? "flex" : "none";
+                    });
+                }
+            };
+        })();
+
+        // Inicializar la aplicación cuando el DOM esté listo
+        document.addEventListener("DOMContentLoaded", () => {
+            AppManager.init();
         });
     </script>
 </body>
