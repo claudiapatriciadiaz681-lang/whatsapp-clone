@@ -1,0 +1,14 @@
+{
+  "name": "whatsapp-realtime-clone",
+  "version": "1.0.0",
+  "description": "WhatsApp Clone en tiempo real con WebSockets",
+  "main": "server.js",
+  "scripts": {
+    "start": "node server.js"
+  },
+  "dependencies": {
+    "express": "^4.19.2",
+    "multer": "^1.4.5-lts.1",
+    "socket.io": "^4.7.5"
+  }
+}

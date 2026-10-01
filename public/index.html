@@ -1,0 +1,306 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>WhatsApp Web Realtime</title>
+    <script src="https://cdn.tailwindcss.com"></script>
+    <script src="/socket.io/socket.io.js"></script>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.4.0/css/all.min.css">
+    <style>
+        .chat-bg {
+            background-color: #efeae2;
+            background-image: url("data:image/svg+xml,%3Csvg width='100' height='100' viewBox='0 0 100 100' xmlns='http://www.w3.org/2000/svg'%3E%3Cpath d='M11 18h2v2h-2z' fill='%3Cpath fill='%23000000' fill-opacity='0.04'%3E%3C/path%3E'%3E%3C/svg%3E");
+        }
+    </style>
+</head>
+<body class="bg-gray-900 h-screen flex items-center justify-center font-sans antialiased">
+
+    <!-- Modal de Inicio de Sesión por Número de Teléfono -->
+    <div id="loginModal" class="fixed inset-0 bg-black/80 flex items-center justify-center z-50">
+        <div class="bg-white p-8 rounded-2xl shadow-2xl max-w-md w-full text-center">
+            <div class="w-16 h-16 bg-emerald-500 rounded-full flex items-center justify-center mx-auto mb-4 text-white text-3xl">
+                <i class="fa-brands fa-whatsapp"></i>
+            </div>
+            <h2 class="text-2xl font-bold text-gray-800 mb-2">Ingresa tu Teléfono</h2>
+            <p class="text-sm text-gray-500 mb-6">Coloca tu número telefónico para identificarte en la red.</p>
+            <input type="tel" id="myPhoneInput" placeholder="Ej: +573001234567" class="w-full px-4 py-3 rounded-lg border border-gray-300 focus:outline-none focus:ring-2 focus:ring-emerald-500 mb-4 text-lg text-center font-semibold">
+            <button onclick="login()" class="w-full bg-emerald-600 hover:bg-emerald-700 text-white font-bold py-3 rounded-lg transition-all shadow-lg">Iniciar Sesión</button>
+        </div>
+    </div>
+
+    <!-- Interfaz Principal -->
+    <div class="w-full h-full max-w-7xl h-[95vh] bg-white rounded-xl shadow-2xl overflow-hidden flex">
+        
+        <!-- Sidebar Izquierdo (Contactos) -->
+        <div class="w-1/3 border-r border-gray-200 flex flex-col bg-white">
+            <!-- Header Sidebar -->
+            <div class="bg-gray-100 p-4 flex justify-between items-center border-b">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold" id="userAvatar">U</div>
+                    <div>
+                        <p class="font-bold text-gray-800 text-sm" id="myPhoneDisplay">---</p>
+                        <p class="text-xs text-emerald-600 font-semibold">En línea</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Abrir Chat con Número -->
+            <div class="p-3 bg-gray-50 border-b flex space-x-2">
+                <input type="tel" id="targetPhoneInput" placeholder="Número de tu amigo..." class="flex-1 px-3 py-2 text-sm border rounded-lg focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                <button onclick="startChat()" class="bg-emerald-600 hover:bg-emerald-700 text-white px-4 py-2 rounded-lg text-sm font-semibold">Chatear</button>
+            </div>
+
+            <!-- Lista de Chats -->
+            <div class="flex-1 overflow-y-auto" id="chatsList">
+                <div class="p-4 text-center text-gray-400 text-sm">Escribe el número de teléfono de tu amigo arriba para iniciar una conversación.</div>
+            </div>
+        </div>
+
+        <!-- Área de Chat Principal -->
+        <div class="flex-1 flex flex-col bg-gray-50">
+            <!-- Header Chat -->
+            <div class="bg-gray-100 p-4 flex items-center justify-between border-b" id="chatHeader" style="display: none;">
+                <div class="flex items-center space-x-3">
+                    <div class="w-10 h-10 rounded-full bg-gray-400 text-white flex items-center justify-center font-bold text-lg" id="activeContactAvatar">?</div>
+                    <div>
+                        <h3 class="font-bold text-gray-800" id="activeContactPhone">---</h3>
+                        <p class="text-xs text-gray-500" id="activeContactStatus">Desconectado</p>
+                    </div>
+                </div>
+            </div>
+
+            <!-- Ventana Vacía Inicial -->
+            <div id="noChatSelected" class="flex-1 flex flex-col items-center justify-center chat-bg text-gray-500">
+                <i class="fa-brands fa-whatsapp text-6xl text-emerald-500 mb-4 opacity-50"></i>
+                <p class="text-lg font-semibold">WhatsApp Web</p>
+                <p class="text-sm">Envía y recibe mensajes seleccionando o ingresando un número de teléfono.</p>
+            </div>
+
+            <!-- Mensajes Container -->
+            <div id="messagesContainer" class="flex-1 overflow-y-auto p-4 chat-bg space-y-3 hidden"></div>
+
+            <!-- Barra de Entrada de Mensajes -->
+            <div id="chatInputBar" class="bg-gray-100 p-3 border-t flex items-center space-x-2 hidden">
+                <input type="file" id="fileInput" class="hidden" onchange="uploadFile(event)">
+                <button onclick="document.getElementById('fileInput').click()" class="text-gray-500 hover:text-emerald-600 p-2 text-xl">
+                    <i class="fa-solid fa-paperclip"></i>
+                </button>
+                <button id="micBtn" onclick="toggleAudioRecord()" class="text-gray-500 hover:text-red-600 p-2 text-xl">
+                    <i class="fa-solid fa-microphone"></i>
+                </button>
+                <input type="text" id="messageInput" placeholder="Escribe un mensaje..." onkeyup="handleTyping(event)" class="flex-1 px-4 py-2 border rounded-full focus:outline-none focus:ring-2 focus:ring-emerald-500">
+                <button onclick="sendMessage()" class="bg-emerald-600 hover:bg-emerald-700 text-white w-10 h-10 rounded-full flex items-center justify-center shadow">
+                    <i class="fa-solid fa-paper-plane"></i>
+                </button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        const socket = io();
+        let myPhone = null;
+        let activeContact = null;
+        let chats = {}; // Estructura: { targetPhone: [ {from, message, type, fileUrl, timestamp} ] }
+        let isRecording = false;
+        let mediaRecorder = null;
+        let audioChunks = [];
+
+        function login() {
+            const phone = document.getElementById('myPhoneInput').value.trim();
+            if (!phone) return alert('Por favor ingresa un número de teléfono');
+            myPhone = phone;
+            socket.emit('register_user', myPhone);
+        }
+
+        socket.on('registration_success', (data) => {
+            document.getElementById('loginModal').classList.add('hidden');
+            document.getElementById('myPhoneDisplay').innerText = data.phone;
+            document.getElementById('userAvatar').innerText = data.phone.slice(-2);
+        });
+
+        socket.on('online_users', (onlineList) => {
+            if (activeContact) {
+                const isOnline = onlineList.includes(activeContact);
+                document.getElementById('activeContactStatus').innerText = isOnline ? 'En línea' : 'Desconectado';
+                document.getElementById('activeContactStatus').className = isOnline ? 'text-xs text-emerald-600 font-bold' : 'text-xs text-gray-500';
+            }
+        });
+
+        function startChat() {
+            const target = document.getElementById('targetPhoneInput').value.trim();
+            if (!target) return alert('Ingresa el número de teléfono de tu amigo');
+            if (target === myPhone) return alert('No puedes chatear contigo mismo');
+
+            activeContact = target;
+            if (!chats[activeContact]) chats[activeContact] = [];
+
+            document.getElementById('noChatSelected').classList.add('hidden');
+            document.getElementById('chatHeader').style.display = 'flex';
+            document.getElementById('messagesContainer').classList.remove('hidden');
+            document.getElementById('chatInputBar').classList.remove('hidden');
+
+            document.getElementById('activeContactPhone').innerText = activeContact;
+            document.getElementById('activeContactAvatar').innerText = activeContact.slice(-2);
+
+            updateChatsSidebar();
+            renderMessages();
+        }
+
+        function sendMessage() {
+            const input = document.getElementById('messageInput');
+            const text = input.value.trim();
+            if (!text || !activeContact) return;
+
+            socket.emit('send_private_message', {
+                targetPhone: activeContact,
+                message: text,
+                type: 'text'
+            });
+
+            input.value = '';
+        }
+
+        socket.on('message_delivered', (data) => {
+            if (!chats[data.toPhone]) chats[data.toPhone] = [];
+            chats[data.toPhone].push(data);
+            if (activeContact === data.toPhone) renderMessages();
+            updateChatsSidebar();
+        });
+
+        socket.on('receive_private_message', (data) => {
+            if (!chats[data.fromPhone]) chats[data.fromPhone] = [];
+            chats[data.fromPhone].push(data);
+
+            if (activeContact === data.fromPhone) {
+                renderMessages();
+            } else {
+                updateChatsSidebar();
+            }
+        });
+
+        function renderMessages() {
+            const container = document.getElementById('messagesContainer');
+            container.innerHTML = '';
+
+            const messageList = chats[activeContact] || [];
+            messageList.forEach(msg => {
+                const isMine = msg.fromPhone === myPhone;
+                const wrapper = document.createElement('div');
+                wrapper.className = `flex ${isMine ? 'justify-end' : 'justify-start'}`;
+
+                let contentHtml = '';
+                if (msg.type === 'text') {
+                    contentHtml = `<p class="text-sm text-gray-800">${escapeHtml(msg.message)}</p>`;
+                } else if (msg.type === 'image') {
+                    contentHtml = `<img src="${msg.fileUrl}" class="max-w-xs rounded-lg mb-1">`;
+                } else if (msg.type === 'audio') {
+                    contentHtml = `<audio controls src="${msg.fileUrl}" class="w-60"></audio>`;
+                } else if (msg.type === 'file') {
+                    contentHtml = `<a href="${msg.fileUrl}" target="_blank" class="text-emerald-600 underline text-sm flex items-center space-x-2"><i class="fa-solid fa-file"></i><span>${msg.fileName || 'Archivo adjunto'}</span></a>`;
+                }
+
+                wrapper.innerHTML = `
+                    <div class="max-w-xs md:max-w-md p-3 rounded-xl shadow-sm ${isMine ? 'bg-emerald-100 rounded-tr-none' : 'bg-white rounded-tl-none'}">
+                        ${contentHtml}
+                        <span class="text-[10px] text-gray-400 block text-right mt-1">${msg.timestamp}</span>
+                    </div>
+                `;
+                container.appendChild(wrapper);
+            });
+
+            container.scrollTop = container.scrollHeight;
+        }
+
+        function updateChatsSidebar() {
+            const container = document.getElementById('chatsList');
+            container.innerHTML = '';
+
+            Object.keys(chats).forEach(phone => {
+                const lastMsg = chats[phone][chats[phone].length - 1];
+                const item = document.createElement('div');
+                item.className = `p-3 flex items-center space-x-3 cursor-pointer hover:bg-gray-100 ${activeContact === phone ? 'bg-gray-100' : ''}`;
+                item.onclick = () => {
+                    document.getElementById('targetPhoneInput').value = phone;
+                    startChat();
+                };
+
+                item.innerHTML = `
+                    <div class="w-10 h-10 rounded-full bg-emerald-600 text-white flex items-center justify-center font-bold">${phone.slice(-2)}</div>
+                    <div class="flex-1 overflow-hidden">
+                        <h4 class="font-bold text-sm text-gray-800">${phone}</h4>
+                        <p class="text-xs text-gray-500 truncate">${lastMsg ? (lastMsg.type === 'text' ? lastMsg.message : '[' + lastMsg.type + ']') : ''}</p>
+                    </div>
+                `;
+                container.appendChild(item);
+            });
+        }
+
+        async function uploadFile(event) {
+            const file = event.target.files[0];
+            if (!file || !activeContact) return;
+
+            const formData = new FormData();
+            formData.append('file', file);
+
+            const res = await fetch('/api/upload', { method: 'POST', body: formData });
+            const data = await res.json();
+
+            let type = 'file';
+            if (file.type.startsWith('image/')) type = 'image';
+            if (file.type.startsWith('audio/')) type = 'audio';
+
+            socket.emit('send_private_message', {
+                targetPhone: activeContact,
+                message: '',
+                type: type,
+                fileUrl: data.url,
+                fileName: data.name
+            });
+        }
+
+        async function toggleAudioRecord() {
+            const micBtn = document.getElementById('micBtn');
+            if (!isRecording) {
+                const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+                mediaRecorder = new MediaRecorder(stream);
+                audioChunks = [];
+
+                mediaRecorder.ondataavailable = e => audioChunks.push(e.data);
+                mediaRecorder.onstop = async () => {
+                    const audioBlob = new Blob(audioChunks, { type: 'audio/webm' });
+                    const file = new File([audioBlob], 'audio_note.webm', { type: 'audio/webm' });
+
+                    const formData = new FormData();
+                    formData.append('file', file);
+
+                    const res = await fetch('/api/upload', { method: 'POST', body: formData });
+                    const data = await res.json();
+
+                    socket.emit('send_private_message', {
+                        targetPhone: activeContact,
+                        type: 'audio',
+                        fileUrl: data.url
+                    });
+                };
+
+                mediaRecorder.start();
+                isRecording = true;
+                micBtn.classList.add('text-red-600', 'animate-pulse');
+            } else {
+                mediaRecorder.stop();
+                isRecording = false;
+                micBtn.classList.remove('text-red-600', 'animate-pulse');
+            }
+        }
+
+        function handleTyping(e) {
+            if (e.key === 'Enter') sendMessage();
+        }
+
+        function escapeHtml(text) {
+            return text.replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+        }
+    </script>
+</body>
+</html>
